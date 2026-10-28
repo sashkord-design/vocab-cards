@@ -79,6 +79,14 @@
       gap: 0.75rem;
     }
 
+    .share-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      padding-top: 0.8rem;
+      border-top: 1px dashed var(--border-color);
+    }
+
     input[type="text"], input[type="password"] {
       flex: 1;
       padding: 0.8rem 1rem;
@@ -119,6 +127,14 @@
     .btn-small {
       padding: 0.5rem 1rem;
       font-size: 0.85rem;
+    }
+
+    .btn-secondary {
+      background-color: #64748b;
+    }
+
+    .btn-secondary:hover {
+      background-color: #475569;
     }
 
     .cards-grid {
@@ -285,6 +301,12 @@
         <input type="text" id="wordInput" placeholder="Enter a new English word or phrase...">
         <button id="addBtn">Add Card</button>
       </div>
+
+      <div class="share-group">
+        <button id="exportBtn" class="btn-small btn-secondary">📥 Export Cards</button>
+        <button id="importBtn" class="btn-small btn-secondary">📤 Import Cards</button>
+        <input type="file" id="importInput" accept=".json" style="display: none;">
+      </div>
     </div>
 
     <div class="cards-grid" id="cardsGrid"></div>
@@ -296,6 +318,9 @@
     const wordInput = document.getElementById('wordInput');
     const addBtn = document.getElementById('addBtn');
     const cardsGrid = document.getElementById('cardsGrid');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importInput = document.getElementById('importInput');
 
     let cards = JSON.parse(localStorage.getItem('vocab_cards_gemini_v3') || '[]');
 
@@ -415,6 +440,48 @@ Return ONLY a raw JSON object (without markdown code blocks, backticks, or any c
         addBtn.disabled = false;
         addBtn.textContent = 'Add Card';
       }
+    });
+
+    // Експорт карток у JSON-файл
+    exportBtn.addEventListener('click', () => {
+      if (cards.length === 0) return alert('Немає карток для експорту.');
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cards, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "my-vocab-cards.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    // Імпорт карток з JSON-файлу
+    importBtn.addEventListener('click', () => {
+      importInput.click();
+    });
+
+    importInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importedCards = JSON.parse(event.target.result);
+          if (Array.isArray(importedCards)) {
+            // Додаємо імпортовані картки, щоб не перезаписувати існуючі
+            cards = [...importedCards, ...cards];
+            localStorage.setItem('vocab_cards_gemini_v3', JSON.stringify(cards));
+            renderCards();
+            alert('Картки успішно імпортовано!');
+          } else {
+            alert('Невірно сформований файл карток.');
+          }
+        } catch (err) {
+          alert('Помилка читання файлу.');
+        }
+      };
+      reader.readAsText(file);
+      importInput.value = '';
     });
 
     renderCards();
