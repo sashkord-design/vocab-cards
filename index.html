@@ -332,27 +332,48 @@
       alert('API Key saved successfully!');
     });
 
-    // Вимова: використовує реальний аудіозапис носія мови, з резервним синтезатором
-    function speakText(text, event) {
+    // Динамічний пошук і програвання реального аудіозапису носія
+    async function speakText(text, event) {
       if (event) event.stopPropagation();
-      
-      // Очищаємо текст для безпечного запиту (беремо перше слово, якщо це фраза)
       const cleanWord = text.trim().toLowerCase().split(' ')[0];
-      const audioUrl = `https://api.dictionaryapi.dev/media/pronunciations/en/${cleanWord}-us.mp3`;
-      
-      const audio = new Audio(audioUrl);
-      audio.play().catch(() => {
-        // Якщо аудіозапису немає в базі, використовуємо якісніший синтезатор як запасний варіант
+
+      try {
+        const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+        if (!response.ok) throw new Error('Audio not found in dictionary');
+        
+        const data = await response.json();
+        let audioUrl = '';
+
+        // Шукаємо перше доступне посилання на аудіо у відповіді словника
+        for (const entry of data) {
+          if (entry.phonetics) {
+            const found = entry.phonetics.find(p => p.audio && p.audio.trim() !== '');
+            if (found) {
+              audioUrl = found.audio;
+              break;
+            }
+          }
+        }
+
+        if (audioUrl) {
+          const audio = new Audio(audioUrl);
+          await audio.play();
+          return;
+        }
+        throw new Error('No audio link available');
+
+      } catch (err) {
+        // Якщо аудіобаза не знайшла запис, використовуємо якісніший синтезатор як запасний варіант
         if ('speechSynthesis' in window) {
           window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'en-US';
-          utterance.rate = 0.95; // Трохи сповільнюємо для природності
+          utterance.rate = 0.95;
           window.speechSynthesis.speak(utterance);
         } else {
           alert('Audio pronunciation is unavailable for this word.');
         }
-      });
+      }
     }
 
     function renderCards() {
