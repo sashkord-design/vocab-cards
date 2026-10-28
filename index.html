@@ -287,7 +287,7 @@
   <div class="container">
     <header>
       <h1>Vocab Cards</h1>
-      <p style="color: var(--text-sub)">Powered by Gemini API & Audio Pronunciation</p>
+      <p style="color: var(--text-sub)">Powered by Gemini API & Real Native Audio</p>
     </header>
 
     <div class="controls">
@@ -332,16 +332,27 @@
       alert('API Key saved successfully!');
     });
 
+    // Вимова: використовує реальний аудіозапис носія мови, з резервним синтезатором
     function speakText(text, event) {
       if (event) event.stopPropagation();
-      if (!('speechSynthesis' in window)) {
-        alert('Text-to-speech is not supported in your browser.');
-        return;
-      }
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
+      
+      // Очищаємо текст для безпечного запиту (беремо перше слово, якщо це фраза)
+      const cleanWord = text.trim().toLowerCase().split(' ')[0];
+      const audioUrl = `https://api.dictionaryapi.dev/media/pronunciations/en/${cleanWord}-us.mp3`;
+      
+      const audio = new Audio(audioUrl);
+      audio.play().catch(() => {
+        // Якщо аудіозапису немає в базі, використовуємо якісніший синтезатор як запасний варіант
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-US';
+          utterance.rate = 0.95; // Трохи сповільнюємо для природності
+          window.speechSynthesis.speak(utterance);
+        } else {
+          alert('Audio pronunciation is unavailable for this word.');
+        }
+      });
     }
 
     function renderCards() {
@@ -354,14 +365,14 @@
             <button class="delete-btn" onclick="event.stopPropagation(); deleteCard(${index})">&times;</button>
             <div class="card-front">
               <h2>${card.word}</h2>
-              <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
+              <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen native pronunciation">🔊</button>
               <span class="hint">Click to flip</span>
             </div>
             <div class="card-back">
               <div class="top-info">
                 <div class="card-header-row">
                   <div class="word-header">${card.word}</div>
-                  <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
+                  <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen native pronunciation">🔊</button>
                 </div>
                 <div class="meta">${card.partOfSpeech || ''} ${card.phonetic ? `• ${card.phonetic}` : ''}</div>
                 <div class="definition"><strong>Meaning:</strong> ${card.definition}</div>
@@ -442,7 +453,6 @@ Return ONLY a raw JSON object (without markdown code blocks, backticks, or any c
       }
     });
 
-    // Експорт карток у JSON-файл
     exportBtn.addEventListener('click', () => {
       if (cards.length === 0) return alert('Немає карток для експорту.');
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cards, null, 2));
@@ -454,7 +464,6 @@ Return ONLY a raw JSON object (without markdown code blocks, backticks, or any c
       downloadAnchor.remove();
     });
 
-    // Імпорт карток з JSON-файлу
     importBtn.addEventListener('click', () => {
       importInput.click();
     });
@@ -468,7 +477,6 @@ Return ONLY a raw JSON object (without markdown code blocks, backticks, or any c
         try {
           const importedCards = JSON.parse(event.target.result);
           if (Array.isArray(importedCards)) {
-            // Додаємо імпортовані картки, щоб не перезаписувати існуючі
             cards = [...importedCards, ...cards];
             localStorage.setItem('vocab_cards_gemini_v3', JSON.stringify(cards));
             renderCards();
