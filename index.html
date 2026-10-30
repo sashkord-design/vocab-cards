@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vocab Cards (Gemini + Audio)</title>
+  <title>Vocab Cards (Free Dictionary + Audio)</title>
   <style>
     :root {
       --bg-color: #f8fafc;
@@ -61,19 +61,6 @@
       border: 1px solid var(--border-color);
     }
 
-    .api-key-row {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      font-size: 0.85rem;
-      color: var(--text-sub);
-    }
-
-    .api-key-row input {
-      padding: 0.5rem 0.8rem;
-      font-size: 0.85rem;
-    }
-
     .input-group {
       display: flex;
       gap: 0.75rem;
@@ -87,7 +74,7 @@
       border-top: 1px dashed var(--border-color);
     }
 
-    input[type="text"], input[type="password"] {
+    input[type="text"] {
       flex: 1;
       padding: 0.8rem 1rem;
       border-radius: 10px;
@@ -99,7 +86,7 @@
       transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    input[type="text"]:focus, input[type="password"]:focus {
+    input[type="text"]:focus {
       border-color: var(--accent-color);
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
     }
@@ -287,16 +274,10 @@
   <div class="container">
     <header>
       <h1>Vocab Cards</h1>
-      <p style="color: var(--text-sub)">Powered by Gemini API & Audio Pronunciation</p>
+      <p style="color: var(--text-sub)">Powered by Free Dictionary API & Audio Pronunciation</p>
     </header>
 
     <div class="controls">
-      <div class="api-key-row">
-        <label for="apiKey">Gemini API Key:</label>
-        <input type="password" id="apiKey" placeholder="Paste your free key here...">
-        <button id="saveKeyBtn" class="btn-small">Save</button>
-      </div>
-
       <div class="input-group">
         <input type="text" id="wordInput" placeholder="Enter a new English word or phrase...">
         <button id="addBtn">Add Card</button>
@@ -313,8 +294,6 @@
   </div>
 
   <script>
-    const apiKeyInput = document.getElementById('apiKey');
-    const saveKeyBtn = document.getElementById('saveKeyBtn');
     const wordInput = document.getElementById('wordInput');
     const addBtn = document.getElementById('addBtn');
     const cardsGrid = document.getElementById('cardsGrid');
@@ -322,15 +301,7 @@
     const importBtn = document.getElementById('importBtn');
     const importInput = document.getElementById('importInput');
 
-    let cards = JSON.parse(localStorage.getItem('vocab_cards_gemini_v3') || '[]');
-
-    const savedKey = localStorage.getItem('gemini_api_key') || '';
-    if (savedKey) apiKeyInput.value = savedKey;
-
-    saveKeyBtn.addEventListener('click', () => {
-      localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
-      alert('API Key saved successfully!');
-    });
+    let cards = JSON.parse(localStorage.getItem('vocab_cards_free_api_v1') || '[]');
 
     function speakText(text, event) {
       if (event) event.stopPropagation();
@@ -376,39 +347,39 @@
 
     function deleteCard(index) {
       cards.splice(index, 1);
-      localStorage.setItem('vocab_cards_gemini_v3', JSON.stringify(cards));
+      localStorage.setItem('vocab_cards_free_api_v1', JSON.stringify(cards));
       renderCards();
     }
 
-    async function fetchWordDetails(word, apiKey) {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    async function fetchWordDetails(word) {
+      const endpoint = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase().trim())}`;
       
-      const prompt = `Act as an advanced English dictionary. Provide details for the English word or phrase "${word}".
-Return ONLY a raw JSON object (without markdown code blocks, backticks, or any conversational filler) with these exact keys:
-- "word": "${word}"
-- "phonetic": "IPA pronunciation (e.g. /əˈbɪk.wɪ.təs/)"
-- "partOfSpeech": "part of speech (e.g. noun, verb, adjective)"
-- "definition": "a clear, simple, and precise explanation of the word in English"
-- "example": "a natural, clear example sentence using the word"`;
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-
+      const response = await fetch(endpoint);
       if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`API Error (${response.status}): ${errText}`);
+        throw new Error('Word not found in the dictionary.');
       }
 
       const data = await response.json();
-      let rawText = data.candidates[0].content.parts[0].text;
+      if (!data || data.length === 0) {
+        throw new Error('No definition found for this word.');
+      }
+
+      const entry = data[0];
+      const phonetic = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
+      const meaning = entry.meanings[0] || {};
+      const partOfSpeech = meaning.partOfSpeech || '';
+      const definitionObj = meaning.definitions && meaning.definitions[0] ? meaning.definitions[0] : {};
       
-      rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(rawText);
+      const definition = definitionObj.definition || 'No definition available.';
+      const example = definitionObj.example || '';
+
+      return {
+        word: entry.word || word,
+        phonetic,
+        partOfSpeech,
+        definition,
+        example
+      };
     }
 
     wordInput.addEventListener('keypress', (e) => {
@@ -419,18 +390,15 @@ Return ONLY a raw JSON object (without markdown code blocks, backticks, or any c
 
     addBtn.addEventListener('click', async () => {
       const word = wordInput.value.trim();
-      const apiKey = apiKeyInput.value.trim();
-
       if (!word) return alert('Please enter a word.');
-      if (!apiKey) return alert('Please enter and save your Gemini API Key first.');
 
       addBtn.disabled = true;
-      addBtn.textContent = 'Generating...';
+      addBtn.textContent = 'Searching...';
 
       try {
-        const cardData = await fetchWordDetails(word, apiKey);
+        const cardData = await fetchWordDetails(word);
         cards.unshift(cardData);
-        localStorage.setItem('vocab_cards_gemini_v3', JSON.stringify(cards));
+        localStorage.setItem('vocab_cards_free_api_v1', JSON.stringify(cards));
         renderCards();
         wordInput.value = '';
       } catch (err) {
@@ -467,7 +435,7 @@ Return ONLY a raw JSON object (without markdown code blocks, backticks, or any c
           const importedCards = JSON.parse(event.target.result);
           if (Array.isArray(importedCards)) {
             cards = [...importedCards, ...cards];
-            localStorage.setItem('vocab_cards_gemini_v3', JSON.stringify(cards));
+            localStorage.setItem('vocab_cards_free_api_v1', JSON.stringify(cards));
             renderCards();
             alert('Картки успішно імпортовано!');
           } else {
