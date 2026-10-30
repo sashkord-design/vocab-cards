@@ -381,7 +381,6 @@
     }
 
     async function fetchWordDetails(word, apiKey) {
-      // Повернуто оригінальну модель gemini-3.8-flash з вашого робочого файлу
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
       
       const prompt = `Act as an advanced English dictionary. Provide details for the English word or phrase "${word}".
