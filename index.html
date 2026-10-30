@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vocab Cards (Free Dictionary + Audio)</title>
+  <title>Vocab Cards (Free Dictionary + Google Audio)</title>
   <style>
     :root {
       --bg-color: #f8fafc;
@@ -274,7 +274,7 @@
   <div class="container">
     <header>
       <h1>Vocab Cards</h1>
-      <p style="color: var(--text-sub)">Powered by Free Dictionary API & Audio Pronunciation</p>
+      <p style="color: var(--text-sub)">Powered by Free Dictionary API & Google Audio</p>
     </header>
 
     <div class="controls">
@@ -303,16 +303,16 @@
 
     let cards = JSON.parse(localStorage.getItem('vocab_cards_free_api_v1') || '[]');
 
+    // Функція відтворення аудіо через Google Translate TTS
     function speakText(text, event) {
       if (event) event.stopPropagation();
-      if (!('speechSynthesis' in window)) {
-        alert('Text-to-speech is not supported in your browser.');
-        return;
-      }
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
+      const encodedWord = encodeURIComponent(text.trim());
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedWord}&tl=en&client=tw-ob`;
+      const audio = new Audio(audioUrl);
+      audio.play().catch(err => {
+        console.error("Audio playback error:", err);
+        alert('Не вдалося відтворити аудіо.');
+      });
     }
 
     function renderCards() {
