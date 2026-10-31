@@ -246,6 +246,25 @@
     .icon-btn.speak:hover { color: var(--accent-color); }
     .icon-btn.delete:hover { color: #ef4444; font-size: 1.2rem; }
 
+    /* Чистий стиль для кнопки динаміка на лицьовій стороні (без синього прямокутника) */
+    .speak-btn-front {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #64748b;
+      padding: 0.3rem;
+      margin-top: 0.4rem;
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .speak-btn-front:hover {
+      color: var(--accent-color);
+    }
+
     .card-back .meta {
       font-size: 0.85rem;
       color: var(--text-sub);
@@ -366,14 +385,14 @@
             <!-- Лицьова сторона -->
             <div class="card-front" onclick="this.closest('.card').classList.toggle('flipped')">
               <h2>${card.word}</h2>
-              <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
+              <button class="speak-btn-front" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
               <span class="hint">Click to flip</span>
             </div>
 
             <!-- Зворотна сторона -->
             <div class="card-back" id="card-back-${index}" onclick="this.closest('.card').classList.toggle('flipped')">
               
-              <!-- Верхні іконки точно за вашим малюнком: [✏️] [🔊] [×] -->
+              <!-- Верхні іконки за вашим малюнком: [✏️] [🔊] [×] -->
               <div class="top-actions-row">
                 <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
                 <button class="icon-btn speak" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
@@ -457,7 +476,6 @@
       let definition = '';
       let example = '';
 
-      // Глибокий пошук прикладу по всіх значеннях у словнику
       for (const meaning of entry.meanings || []) {
         if (!partOfSpeech) partOfSpeech = meaning.partOfSpeech || '';
         for (const defObj of meaning.definitions || []) {
@@ -477,7 +495,7 @@
         phonetic,
         partOfSpeech,
         definition: definition || 'No definition available.',
-        example: example || '' // Якщо прикладу немає, залишаємо порожнім, і його можна легко додати через кнопку Edit ✏️
+        example: example || ''
       };
     }
 
