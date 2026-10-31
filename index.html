@@ -256,7 +256,6 @@
       margin-bottom: 0.5rem;
     }
 
-    /* Кнопки керування у верхньому правому кутку тільки для зворотної сторони */
     .action-btns {
       position: absolute;
       top: 12px;
@@ -345,10 +344,7 @@
 
     function speakText(text, event) {
       if (event) event.stopPropagation();
-      if (!('speechSynthesis' in window)) {
-        alert('Text-to-speech is not supported in your browser.');
-        return;
-      }
+      if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-US';
@@ -373,23 +369,23 @@
         const cardEl = document.createElement('div');
         cardEl.className = 'card';
         cardEl.innerHTML = `
-          <div class="card-inner" id="card-inner-${index}" onclick="if(!event.target.closest('button') && !event.target.closest('textarea') && !event.target.closest('.edit-form')) { this.classList.toggle('flipped'); }">
+          <div class="card-inner" id="card-inner-${index}">
             
             <!-- Лицьова сторона -->
-            <div class="card-front">
+            <div class="card-front" onclick="document.getElementById('card-inner-${index}').classList.toggle('flipped')">
               <h2>${card.word}</h2>
               <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
               <span class="hint">Click to flip</span>
             </div>
 
             <!-- Зворотна сторона -->
-            <div class="card-back" id="card-back-${index}">
+            <div class="card-back" id="card-back-${index}" onclick="document.getElementById('card-inner-${index}').classList.toggle('flipped')">
               <div class="action-btns">
                 <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
                 <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard(${index})" title="Delete card">&times;</button>
               </div>
 
-              <div class="top-info" id="card-content-${index}" style="width: 100%;">
+              <div class="top-info" id="card-content-${index}" style="width: 100%;" onclick="event.stopPropagation()">
                 <div class="card-header-row">
                   <div class="word-header">${card.word}</div>
                   <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
@@ -408,7 +404,7 @@
 
     function toggleEdit(index) {
       const contentDiv = document.getElementById(`card-content-${index}`);
-      const cardEl = document.getElementById(`card-inner-${index}`).parentElement;
+      const cardEl = document.getElementById(`card-inner-${index}`);
       
       if (!cardEl.classList.contains('flipped')) {
         cardEl.classList.add('flipped');
@@ -492,7 +488,7 @@
       addBtn.textContent = 'Searching...';
 
       try {
-        const cardData = await fetchWordDetails(word);
+        const cardData = `await` ? await fetchWordDetails(word) : null;
         cards.unshift(cardData);
         localStorage.setItem('vocab_cards_free_api_v1', JSON.stringify(cards));
         renderCards();
