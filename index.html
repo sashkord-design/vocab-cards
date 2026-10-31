@@ -262,7 +262,7 @@
       right: 12px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       z-index: 10;
     }
 
@@ -270,14 +270,15 @@
       background: none;
       border: none;
       color: #94a3b8;
-      font-size: 1.1rem;
+      font-size: 0.95rem; /* Зменшені значки */
       cursor: pointer;
-      padding: 0.2rem 0.4rem;
+      padding: 0.1rem 0.2rem;
       transition: color 0.2s;
+      line-height: 1;
     }
 
     .icon-btn.edit:hover { color: var(--accent-color); }
-    .icon-btn.delete:hover { color: #ef4444; font-size: 1.4rem; }
+    .icon-btn.delete:hover { color: #ef4444; font-size: 1.1rem; }
 
     .edit-form {
       display: flex;
@@ -372,14 +373,14 @@
           <div class="card-inner" id="card-inner-${index}">
             
             <!-- Лицьова сторона -->
-            <div class="card-front" onclick="this.closest('.card').classList.toggle('flipped')">
+            <div class="card-front" onclick="this.closest('.card').querySelector('.card-inner').classList.toggle('flipped')">
               <h2>${card.word}</h2>
               <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
               <span class="hint">Click to flip</span>
             </div>
 
             <!-- Зворотна сторона -->
-            <div class="card-back" id="card-back-${index}" onclick="this.closest('.card').classList.toggle('flipped')">
+            <div class="card-back" id="card-back-${index}" onclick="this.closest('.card').querySelector('.card-inner').classList.toggle('flipped')">
               <div class="action-btns">
                 <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
                 <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard(${index})" title="Delete card">&times;</button>
@@ -404,10 +405,10 @@
 
     function toggleEdit(index) {
       const contentDiv = document.getElementById(`card-content-${index}`);
-      const cardEl = document.getElementById(`card-inner-${index}`).parentElement;
+      const cardInner = document.getElementById(`card-inner-${index}`);
       
-      if (!cardEl.classList.contains('flipped')) {
-        cardEl.classList.add('flipped');
+      if (!cardInner.classList.contains('flipped')) {
+        cardInner.classList.add('flipped');
       }
 
       const card = cards[index];
@@ -458,19 +459,32 @@
 
       const entry = data[0];
       const phonetic = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
-      const meaning = entry.meanings[0] || {};
-      const partOfSpeech = meaning.partOfSpeech || '';
-      const definitionObj = meaning.definitions && meaning.definitions[0] ? meaning.definitions[0] : {};
       
-      const definition = definitionObj.definition || 'No definition available.';
-      const example = definitionObj.example || '';
+      let partOfSpeech = '';
+      let definition = '';
+      let example = '';
+
+      // Шукаємо визначення та намагаємося знайти перловий приклад серед усіх значень
+      for (const meaning of entry.meanings || []) {
+        if (!partOfSpeech) partOfSpeech = meaning.partOfSpeech || '';
+        for (const defObj of meaning.definitions || []) {
+          if (!definition && defObj.definition) {
+            definition = defObj.definition;
+          }
+          if (!example && defObj.example) {
+            example = defObj.example;
+          }
+          if (definition && example) break;
+        }
+        if (definition && example) break;
+      }
 
       return {
         word: entry.word || word,
         phonetic,
         partOfSpeech,
-        definition,
-        example
+        definition: definition || 'No definition available.',
+        example: example || ''
       };
     }
 
