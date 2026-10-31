@@ -256,19 +256,21 @@
       margin-bottom: 0.5rem;
     }
 
+    /* Кнопки керування у верхньому правому кутку тільки для зворотної сторони */
     .action-btns {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: 12px;
+      right: 12px;
       display: flex;
-      gap: 4px;
+      align-items: center;
+      gap: 6px;
       z-index: 10;
     }
 
     .icon-btn {
       background: none;
       border: none;
-      color: #cbd5e1;
+      color: #94a3b8;
       font-size: 1.1rem;
       cursor: pointer;
       padding: 0.2rem 0.4rem;
@@ -331,7 +333,6 @@
     let cards = JSON.parse(localStorage.getItem('vocab_cards_free_api_v1') || '[]');
     let voices = [];
 
-    // Попереднє завантаження голосів для синтезу мови
     function loadVoices() {
       if ('speechSynthesis' in window) {
         voices = window.speechSynthesis.getVoices();
@@ -342,7 +343,6 @@
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
 
-    // Покращене стабільне озвучення
     function speakText(text, event) {
       if (event) event.stopPropagation();
       if (!('speechSynthesis' in window)) {
@@ -356,7 +356,6 @@
 
       if (voices.length === 0) loadVoices();
       
-      // Шукаємо найкращий жіночий або природний англійський голос
       const preferredVoice = voices.find(v => 
         v.lang === 'en-US' && (v.name.includes('Google US English') || v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Natural') || v.name.includes('Female'))
       ) || voices.find(v => v.lang.startsWith('en'));
@@ -375,19 +374,22 @@
         cardEl.className = 'card';
         cardEl.innerHTML = `
           <div class="card-inner" id="card-inner-${index}" onclick="if(!event.target.closest('button') && !event.target.closest('textarea') && !event.target.closest('.edit-form')) { this.classList.toggle('flipped'); }">
-            <div class="action-btns">
-              <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
-              <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard(${index})" title="Delete card">&times;</button>
-            </div>
             
+            <!-- Лицьова сторона -->
             <div class="card-front">
               <h2>${card.word}</h2>
               <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
               <span class="hint">Click to flip</span>
             </div>
 
+            <!-- Зворотна сторона -->
             <div class="card-back" id="card-back-${index}">
-              <div class="top-info" id="card-content-${index}">
+              <div class="action-btns">
+                <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
+                <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard(${index})" title="Delete card">&times;</button>
+              </div>
+
+              <div class="top-info" id="card-content-${index}" style="width: 100%;">
                 <div class="card-header-row">
                   <div class="word-header">${card.word}</div>
                   <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
@@ -397,19 +399,17 @@
                 ${card.example ? `<div class="example">"${card.example}"</div>` : ''}
               </div>
             </div>
+
           </div>
         `;
         cardsGrid.appendChild(cardEl);
       });
     }
 
-    // Редагування картки
     function toggleEdit(index) {
-      const cardBack = document.getElementById(`card-back-${index}`);
       const contentDiv = document.getElementById(`card-content-${index}`);
       const cardEl = document.getElementById(`card-inner-${index}`).parentElement;
       
-      // Переконуємося, що картка перегорнута на зворотний бік при редагуванні
       if (!cardEl.classList.contains('flipped')) {
         cardEl.classList.add('flipped');
       }
