@@ -277,7 +277,7 @@
     }
 
     .icon-btn.edit:hover { color: var(--accent-color); }
-    .icon-btn.delete:hover { color: #ef4444; }
+    .icon-btn.delete:hover { color: #ef4444; font-size: 1.4rem; }
 
     .edit-form {
       display: flex;
@@ -372,14 +372,14 @@
           <div class="card-inner" id="card-inner-${index}">
             
             <!-- Лицьова сторона -->
-            <div class="card-front" onclick="document.getElementById('card-inner-${index}').classList.toggle('flipped')">
+            <div class="card-front" onclick="this.closest('.card').classList.toggle('flipped')">
               <h2>${card.word}</h2>
               <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
               <span class="hint">Click to flip</span>
             </div>
 
             <!-- Зворотна сторона -->
-            <div class="card-back" id="card-back-${index}" onclick="document.getElementById('card-inner-${index}').classList.toggle('flipped')">
+            <div class="card-back" id="card-back-${index}" onclick="this.closest('.card').classList.toggle('flipped')">
               <div class="action-btns">
                 <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
                 <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard(${index})" title="Delete card">&times;</button>
@@ -404,7 +404,7 @@
 
     function toggleEdit(index) {
       const contentDiv = document.getElementById(`card-content-${index}`);
-      const cardEl = document.getElementById(`card-inner-${index}`);
+      const cardEl = document.getElementById(`card-inner-${index}`).parentElement;
       
       if (!cardEl.classList.contains('flipped')) {
         cardEl.classList.add('flipped');
@@ -488,7 +488,7 @@
       addBtn.textContent = 'Searching...';
 
       try {
-        const cardData = `await` ? await fetchWordDetails(word) : null;
+        const cardData = await fetchWordDetails(word);
         cards.unshift(cardData);
         localStorage.setItem('vocab_cards_free_api_v1', JSON.stringify(cards));
         renderCards();
