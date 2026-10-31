@@ -217,19 +217,34 @@
       color: var(--accent-color);
     }
 
-    .speak-btn {
-      background: none;
-      border: none;
-      font-size: 1.1rem;
-      cursor: pointer;
-      padding: 0.2rem 0.4rem;
-      border-radius: 6px;
-      transition: background 0.2s;
+    /* Рядок верхніх іконок згідно з вашим малюнком: [✏️] [🔊] [×] */
+    .top-actions-row {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 10;
     }
 
-    .speak-btn:hover {
-      background-color: rgba(0, 0, 0, 0.05);
+    .icon-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 0.95rem;
+      cursor: pointer;
+      padding: 0.1rem 0.2rem;
+      transition: color 0.2s;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+
+    .icon-btn.edit:hover { color: var(--accent-color); }
+    .icon-btn.speak:hover { color: var(--accent-color); }
+    .icon-btn.delete:hover { color: #ef4444; font-size: 1.2rem; }
 
     .card-back .meta {
       font-size: 0.85rem;
@@ -255,30 +270,6 @@
       border-left-width: 3px;
       margin-bottom: 0.5rem;
     }
-
-    .action-btns {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      z-index: 10;
-    }
-
-    .icon-btn {
-      background: none;
-      border: none;
-      color: #94a3b8;
-      font-size: 0.95rem;
-      cursor: pointer;
-      padding: 0.1rem 0.2rem;
-      transition: color 0.2s;
-      line-height: 1;
-    }
-
-    .icon-btn.edit:hover { color: var(--accent-color); }
-    .icon-btn.delete:hover { color: #ef4444; font-size: 1.1rem; }
 
     .edit-form {
       display: flex;
@@ -381,15 +372,17 @@
 
             <!-- Зворотна сторона -->
             <div class="card-back" id="card-back-${index}" onclick="this.closest('.card').classList.toggle('flipped')">
-              <div class="action-btns">
+              
+              <!-- Верхні іконки точно за вашим малюнком: [✏️] [🔊] [×] -->
+              <div class="top-actions-row">
                 <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
+                <button class="icon-btn speak" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
                 <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard(${index})" title="Delete card">&times;</button>
               </div>
 
               <div class="top-info" id="card-content-${index}" style="width: 100%;" onclick="event.stopPropagation()">
                 <div class="card-header-row">
                   <div class="word-header">${card.word}</div>
-                  <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
                 </div>
                 <div class="meta">${card.partOfSpeech || ''} ${card.phonetic ? `• ${card.phonetic}` : ''}</div>
                 <div class="definition"><strong>Meaning:</strong> ${card.definition}</div>
@@ -464,6 +457,7 @@
       let definition = '';
       let example = '';
 
+      // Глибокий пошук прикладу по всіх значеннях у словнику
       for (const meaning of entry.meanings || []) {
         if (!partOfSpeech) partOfSpeech = meaning.partOfSpeech || '';
         for (const defObj of meaning.definitions || []) {
@@ -483,7 +477,7 @@
         phonetic,
         partOfSpeech,
         definition: definition || 'No definition available.',
-        example: example || ''
+        example: example || '' // Якщо прикладу немає, залишаємо порожнім, і його можна легко додати через кнопку Edit ✏️
       };
     }
 
