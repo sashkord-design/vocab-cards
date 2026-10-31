@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vocab Cards (Free Dictionary + Audio)</title>
+  <title>Vocab Cards (Free Dictionary + Edit & Audio)</title>
   <style>
     :root {
       --bg-color: #f8fafc;
@@ -74,7 +74,7 @@
       border-top: 1px dashed var(--border-color);
     }
 
-    input[type="text"] {
+    input[type="text"], textarea {
       flex: 1;
       padding: 0.8rem 1rem;
       border-radius: 10px;
@@ -86,9 +86,14 @@
       transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    input[type="text"]:focus {
+    input[type="text"]:focus, textarea:focus {
       border-color: var(--accent-color);
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      font-family: inherit;
     }
 
     button {
@@ -132,7 +137,7 @@
     }
 
     .card {
-      height: 330px;
+      height: 350px;
       cursor: pointer;
     }
 
@@ -230,42 +235,64 @@
       font-size: 0.85rem;
       color: var(--text-sub);
       font-style: italic;
-      margin-bottom: 0.8rem;
+      margin-bottom: 0.6rem;
     }
 
     .card-back .definition {
-      font-size: 0.95rem;
-      margin-bottom: 0.8rem;
-      line-height: 1.4;
+      font-size: 0.9rem;
+      margin-bottom: 0.6rem;
+      line-height: 1.3;
     }
 
     .card-back .example {
       font-size: 0.85rem;
       background-color: #ffffff;
-      padding: 0.6rem;
+      padding: 0.5rem;
       border-left: 3px solid var(--accent-color);
       border-radius: 6px;
       line-height: 1.3;
       border: 1px solid var(--border-color);
       border-left-width: 3px;
+      margin-bottom: 0.5rem;
     }
 
-    .delete-btn {
+    .action-btns {
       position: absolute;
       top: 10px;
       right: 10px;
+      display: flex;
+      gap: 4px;
+      z-index: 10;
+    }
+
+    .icon-btn {
       background: none;
       border: none;
       color: #cbd5e1;
-      font-size: 1.3rem;
+      font-size: 1.1rem;
       cursor: pointer;
-      z-index: 10;
-      padding: 0.2rem 0.5rem;
+      padding: 0.2rem 0.4rem;
       transition: color 0.2s;
     }
 
-    .delete-btn:hover {
-      color: #ef4444;
+    .icon-btn.edit:hover { color: var(--accent-color); }
+    .icon-btn.delete:hover { color: #ef4444; }
+
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .edit-form textarea {
+      font-size: 0.85rem;
+      padding: 0.4rem;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 0.5rem;
     }
   </style>
 </head>
@@ -302,8 +329,20 @@
     const importInput = document.getElementById('importInput');
 
     let cards = JSON.parse(localStorage.getItem('vocab_cards_free_api_v1') || '[]');
+    let voices = [];
 
-    // Покращене озвучення через природний синтезатор браузера (автоматично шукає найкращий англійський голос)
+    // Попереднє завантаження голосів для синтезу мови
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        voices = window.speechSynthesis.getVoices();
+      }
+    }
+    loadVoices();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    // Покращене стабільне озвучення
     function speakText(text, event) {
       if (event) event.stopPropagation();
       if (!('speechSynthesis' in window)) {
@@ -313,11 +352,15 @@
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-US';
-      utterance.rate = 0.95; // Трохи сповільнена, більш природна швидкість
+      utterance.rate = 0.95;
+
+      if (voices.length === 0) loadVoices();
       
-      // Намагаємося знайти якісний голос (наприклад, Google або Siri)
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Siri')));
+      // Шукаємо найкращий жіночий або природний англійський голос
+      const preferredVoice = voices.find(v => 
+        v.lang === 'en-US' && (v.name.includes('Google US English') || v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Natural') || v.name.includes('Female'))
+      ) || voices.find(v => v.lang.startsWith('en'));
+
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
@@ -331,15 +374,20 @@
         const cardEl = document.createElement('div');
         cardEl.className = 'card';
         cardEl.innerHTML = `
-          <div class="card-inner" onclick="this.parentElement.classList.toggle('flipped')">
-            <button class="delete-btn" onclick="event.stopPropagation(); deleteCard(${index})">&times;</button>
+          <div class="card-inner" id="card-inner-${index}" onclick="if(!event.target.closest('button') && !event.target.closest('textarea') && !event.target.closest('.edit-form')) { this.classList.toggle('flipped'); }">
+            <div class="action-btns">
+              <button class="icon-btn edit" onclick="event.stopPropagation(); toggleEdit(${index})" title="Edit card">✏️</button>
+              <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard(${index})" title="Delete card">&times;</button>
+            </div>
+            
             <div class="card-front">
               <h2>${card.word}</h2>
               <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
               <span class="hint">Click to flip</span>
             </div>
-            <div class="card-back">
-              <div class="top-info">
+
+            <div class="card-back" id="card-back-${index}">
+              <div class="top-info" id="card-content-${index}">
                 <div class="card-header-row">
                   <div class="word-header">${card.word}</div>
                   <button class="speak-btn" onclick="speakText('${card.word.replace(/'/g, "\\'")}', event)" title="Listen pronunciation">🔊</button>
@@ -353,6 +401,44 @@
         `;
         cardsGrid.appendChild(cardEl);
       });
+    }
+
+    // Редагування картки
+    function toggleEdit(index) {
+      const cardBack = document.getElementById(`card-back-${index}`);
+      const contentDiv = document.getElementById(`card-content-${index}`);
+      const cardEl = document.getElementById(`card-inner-${index}`).parentElement;
+      
+      // Переконуємося, що картка перегорнута на зворотний бік при редагуванні
+      if (!cardEl.classList.contains('flipped')) {
+        cardEl.classList.add('flipped');
+      }
+
+      const card = cards[index];
+
+      contentDiv.innerHTML = `
+        <div class="edit-form" onclick="event.stopPropagation()">
+          <label style="font-size:0.75rem; color:var(--text-sub);">Meaning:</label>
+          <textarea id="edit-def-${index}" rows="3">${card.definition || ''}</textarea>
+          <label style="font-size:0.75rem; color:var(--text-sub);">Example:</label>
+          <textarea id="edit-ex-${index}" rows="2">${card.example || ''}</textarea>
+          <div class="edit-actions">
+            <button class="btn-small" onclick="saveEdit(${index})">Save</button>
+            <button class="btn-small btn-secondary" onclick="renderCards()">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveEdit(index) {
+      const newDef = document.getElementById(`edit-def-${index}`).value.trim();
+      const newEx = document.getElementById(`edit-ex-${index}`).value.trim();
+
+      cards[index].definition = newDef;
+      cards[index].example = newEx;
+
+      localStorage.setItem('vocab_cards_free_api_v1', JSON.stringify(cards));
+      renderCards();
     }
 
     function deleteCard(index) {
